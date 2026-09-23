@@ -1,0 +1,166 @@
+include("lib/socket.bzg");
+
+// ============================================================
+// BSL HTTP SERVER
+// ============================================================
+
+// 1. Initialize Socket
+if (socket_init() < 0) {
+    print("Socket Initialization Failed\n");
+} else {
+    print("Socket Ready\n");
+}
+
+// 2. Create Socket Server
+var server = socket_create();
+
+if (server < 0) {
+    print("Socket Creation Failed\n");
+}
+
+// 3. Bind Server to Port 8080
+if (socket_bind(server, 0, 8080) < 0) {
+    print("Socket Bind Failed.\n");
+}
+
+// 4. Listen for Incoming Connections
+if (socket_listen(server, 5) < 0) {
+    print("Socket Listen Failed.\n");
+}
+
+print("Server running on http://localhost:8080/\n");
+
+// ============================================================
+// MAIN SERVER LOOP
+// ============================================================
+
+while (1) {
+
+    // 5. Accept Client Connection
+    var client = socket_accept(server);
+
+    print("Client connected!\n");
+
+    // 6. Read HTTP Request
+    var data = socket_read(client, 1024);
+
+    if (sizeof(data) >= 0) {
+
+        print("Received Request:\n");
+        print(data);
+
+        // ----------------------------------------------------
+        // Extract Requested Path
+        // ----------------------------------------------------
+
+        var match = regex("/.* HTTP/1.1", data);
+        var path = substr(match, 0, sizeof(match) - 9);
+
+        print("Requested Path: " + path + "\n");
+
+        // ----------------------------------------------------
+        // Variables for HTTP Response
+        // ----------------------------------------------------
+
+        var BODY = "";
+        var HTTP = "";
+
+        // ====================================================
+        // ROUTE: /
+        // ====================================================
+
+        if (path == "/") {
+
+            BODY = "<!DOCTYPE html>"
+                 + "<html>"
+                 + "<head>"
+                 + "<meta charset='UTF-8'>"
+                 + "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                 + "<title>BSL HTTP Server - Home</title>"
+                 + "</head>"
+                 + "<body style='font-family:sans-serif; text-align:center; padding:50px;'>"
+                 + "<h1 style='color:#0f766e;'>Welcome to BSL HTTP Server</h1>"
+                 + "<p>This is the default landing page served on route '/'.</p>"
+                 + "<p>Built using Bonezegei Scripting Language and BSL_Socket.</p>"
+                 + "</body>"
+                 + "</html>";
+
+            HTTP = "HTTP/1.1 200 OK\r\n"
+                 + "Content-Type: text/html\r\n"
+                 + "Content-Length: " + sizeof(BODY) + "\r\n"
+                 + "Connection: close\r\n"
+                 + "\r\n";
+        }
+
+        // ====================================================
+        // ROUTE: /about
+        // ====================================================
+
+        else if (path == "/about") {
+
+            BODY = "<!DOCTYPE html>"
+                 + "<html>"
+                 + "<head>"
+                 + "<meta charset='UTF-8'>"
+                 + "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                 + "<title>BSL HTTP Server - About</title>"
+                 + "</head>"
+                 + "<body style='font-family:sans-serif; text-align:center; padding:50px;'>"
+                 + "<h1 style='color:#0f766e;'>About BSL HTTP Server</h1>"
+                 + "<p>This project demonstrates a low-level HTTP web server.</p>"
+                 + "<p>The server was built using Bonezegei Scripting Language (BSL).</p>"
+                 + "<p>It uses the BSL_Socket library to handle TCP connections.</p>"
+                 + "<p>Server Port: 8080</p>"
+                 + "</body>"
+                 + "</html>";
+
+            HTTP = "HTTP/1.1 200 OK\r\n"
+                 + "Content-Type: text/html\r\n"
+                 + "Content-Length: " + sizeof(BODY) + "\r\n"
+                 + "Connection: close\r\n"
+                 + "\r\n";
+        }
+
+        // ====================================================
+        // ANY OTHER ROUTE: 404
+        // ====================================================
+
+        else {
+
+            BODY = "<!DOCTYPE html>"
+                 + "<html>"
+                 + "<head>"
+                 + "<meta charset='UTF-8'>"
+                 + "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                 + "<title>404 Not Found</title>"
+                 + "</head>"
+                 + "<body style='font-family:sans-serif; text-align:center; padding:50px;'>"
+                 + "<h1 style='color:#e11d48;'>404 - Page Not Found</h1>"
+                 + "<p>The requested route does not exist on this BSL HTTP Server.</p>"
+                 + "<p>Requested path: " + path + "</p>"
+                 + "</body>"
+                 + "</html>";
+
+            HTTP = "HTTP/1.1 404 Not Found\r\n"
+                 + "Content-Type: text/html\r\n"
+                 + "Content-Length: " + sizeof(BODY) + "\r\n"
+                 + "Connection: close\r\n"
+                 + "\r\n";
+        }
+
+        // ====================================================
+        // SEND HTTP RESPONSE
+        // ====================================================
+
+        socket_write(
+            client,
+            HTTP + BODY,
+            sizeof(HTTP + BODY)
+        );
+
+        print("Response Sent.\n");
+
+        // Close Client Connection
+        socket_close(client);
+    }
+}
